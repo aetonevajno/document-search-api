@@ -3,6 +3,35 @@
 Асинхронный API для полнотекстового поиска документов на FastAPI,
 PostgreSQL и Elasticsearch.
 
+## Локальный запуск
+
+Требуется Python 3.12–3.14. На текущем этапе приложение запускается без
+PostgreSQL и Elasticsearch: `/health` проверяет только работоспособность API.
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
+cp .env.example .env
+python -m uvicorn app.main:app --reload
+```
+
+После запуска доступны:
+
+- liveness-проверка: <http://127.0.0.1:8000/health>;
+- Swagger UI: <http://127.0.0.1:8000/docs>;
+- схема OpenAPI: <http://127.0.0.1:8000/openapi.json>.
+
+Проверки проекта:
+
+```bash
+python -m pytest
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy
+```
+
 ## API-контракт и принятые решения
 
 Ниже зафиксирована трактовка неоднозначных мест исходного задания. Эти
