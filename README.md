@@ -3,6 +3,70 @@
 Асинхронный API для полнотекстового поиска документов на FastAPI,
 PostgreSQL и Elasticsearch.
 
+## Запуск в Docker
+
+Основной способ поднять всё окружение — Docker Compose. Он запускает
+PostgreSQL 17 и Elasticsearch 8.19, применяет миграции Alembic отдельным
+одноразовым сервисом и только после этого запускает API.
+
+```bash
+cp .env.example .env
+docker compose up --build --wait
+```
+
+Проверка сервисов:
+
+```bash
+docker compose ps
+curl --fail http://127.0.0.1:8000/health
+curl --fail http://127.0.0.1:9200/_cluster/health
+```
+
+Остановка контейнеров сохраняет данные в именованных томах:
+
+```bash
+docker compose down
+```
+
+Полный сброс окружения вместе с данными выполняется командой
+`docker compose down --volumes`. Эта операция необратимо удаляет локальные
+данные PostgreSQL и Elasticsearch.
+
+Все опубликованные порты привязаны к `127.0.0.1`. Пароль PostgreSQL из
+`.env.example` и отключённая авторизация Elasticsearch предназначены только
+для локальной разработки и тестового задания.
+
+## PostgreSQL и миграции
+
+Полная модель документа хранится в таблице `documents`:
+
+- `id UUID PRIMARY KEY`;
+- `rubrics TEXT[]`;
+- `text TEXT`;
+- `created_date TIMESTAMP WITHOUT TIME ZONE`.
+
+При Docker-запуске миграции применяются автоматически. Для приложения,
+запущенного непосредственно на хосте, ими можно управлять вручную:
+
+```bash
+python -m alembic upgrade head
+python -m alembic current
+python -m alembic check
+```
+
+Репозиторий документов не выполняет `commit` или `rollback`: граница
+транзакции принадлежит вызывающему сервису или CLI-команде.
+
+Интеграционные тесты используют отдельную БД с суффиксом `_test`. На чистом
+Docker volume она создаётся автоматически:
+
+```bash
+docker compose up -d --wait postgres
+export TEST_DATABASE_URL='postgresql+asyncpg://document_search:document_search_local@127.0.0.1:5432/document_search_test'
+APP_DATABASE_URL="$TEST_DATABASE_URL" python -m alembic upgrade head
+python -m pytest -m integration
+```
+
 ## Локальный запуск
 
 Требуется Python 3.12–3.14. На текущем этапе приложение запускается без

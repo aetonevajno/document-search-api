@@ -1,0 +1,104 @@
+name: document-search-api
+
+x-app-build: &app-build
+  context: .
+  dockerfile: Dockerfile
+
+x-app-environment: &app-environment
+  APP_NAME: ${APP_NAME:-document-search-api}
+  APP_VERSION: ${APP_VERSION:-0.1.0}
+  APP_ENVIRONMENT: ${APP_ENVIRONMENT:-local}
+  APP_DEBUG: ${APP_DEBUG:-false}
+  APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+  APP_DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-document_search}:${POSTGRES_PASSWORD:-document_search_local}@postgres:5432/${POSTGRES_DB:-document_search}"
+  APP_ELASTICSEARCH_URL: http://elasticsearch:9200
+  APP_ELASTICSEARCH_INDEX: ${APP_ELASTICSEARCH_INDEX:-documents}
+
+services:
+  api:
+    build: *app-build
+    image: document-search-api:local
+    init: true
+    environment: *app-environment
+    ports:
+      - "${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  migrate:
+    build: *app-build
+    image: document-search-api:local
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    environment: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
+  postgres:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-document_search}
+      POSTGRES_USER: ${POSTGRES_USER:-document_search}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-document_search_local}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-document_search_test}
+    ports:
+      - "${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-test-db.sh:/docker-entrypoint-initdb.d/10-create-test-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.22
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.autoconfiguration.enabled: "false"
+      xpack.ml.enabled: "false"
+      ingest.geoip.downloader.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "${COMPOSE_BIND_ADDRESS:-127.0.0.1}:${ELASTICSEARCH_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl --fail --silent
+          'http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=5s'
+          | grep --quiet '"timed_out":false'
+      interval: 10s
+      timeout: 7s
+      retries: 12
+      start_period: 30s
+    mem_limit: 1g
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  elasticsearch_data:

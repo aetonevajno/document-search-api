@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     environment: Environment = Environment.LOCAL
     debug: bool = False
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    database_url: str = (
+        "postgresql+asyncpg://document_search:document_search_local@127.0.0.1:5432/document_search"
+    )
+    elasticsearch_url: str = "http://127.0.0.1:9200"
+    elasticsearch_index: str = "documents"
 
 
 @lru_cache
