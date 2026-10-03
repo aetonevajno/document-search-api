@@ -1,5 +1,3 @@
-"""Document import package"""
-
 from app.importers.csv_parser import (
     DOCUMENT_UUID_NAMESPACE,
     CsvImportError,

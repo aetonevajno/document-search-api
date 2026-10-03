@@ -1,5 +1,3 @@
-"""Repositories for PostgreSQL-backed aggregates"""
-
 from collections.abc import Collection
 from uuid import UUID
 
@@ -11,36 +9,24 @@ from app.db.models import Document
 
 
 class DocumentRepository:
-    """Persist and retrieve documents without owning transaction boundaries"""
-
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def add(self, document: Document) -> Document:
-        """Add a document and flush it within the caller-owned transaction"""
-        self._session.add(document)
-        await self._session.flush()
-        return document
-
     async def get(self, document_id: UUID) -> Document | None:
-        """Return a document by ID, or None when it does not exist"""
         return await self._session.get(Document, document_id)
 
     async def get_many(self, document_ids: Collection[UUID]) -> list[Document]:
-        """Return all documents whose IDs occur in the supplied collection"""
-        unique_ids = tuple(dict.fromkeys(document_ids))
-        if not unique_ids:
+        if not document_ids:
             return []
 
         result = await self._session.scalars(
             select(Document)
-            .where(Document.id.in_(unique_ids))
+            .where(Document.id.in_(document_ids))
             .order_by(Document.created_date.desc(), Document.id.asc())
         )
         return list(result.all())
 
     async def upsert_many(self, documents: Collection[Document]) -> None:
-        """Insert or update documents by primary key; the last duplicate wins"""
         unique_documents = {document.id: document for document in documents}
         values = [
             {
@@ -66,7 +52,6 @@ class DocumentRepository:
         await self._session.execute(statement)
 
     async def delete(self, document_id: UUID) -> bool:
-        """Delete a document and report whether it existed"""
         document = await self.get(document_id)
         if document is None:
             return False

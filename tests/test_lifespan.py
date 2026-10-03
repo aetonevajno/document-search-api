@@ -1,5 +1,3 @@
-"""Tests for external-client application lifecycle"""
-
 from unittest.mock import AsyncMock
 
 import pytest
@@ -13,7 +11,6 @@ from app.search.index import DocumentSearchIndex
 async def test_lifespan_prepares_index_and_closes_resources(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Startup validates Elasticsearch and shutdown releases both clients"""
     ensure_index = AsyncMock()
     close_elasticsearch = AsyncMock()
     dispose_database = AsyncMock()

@@ -1,12 +1,9 @@
-"""Tests for Elasticsearch client construction and cleanup"""
-
 from unittest.mock import AsyncMock, patch
 
 from app.search.client import ElasticsearchConnection
 
 
 async def test_connection_applies_transport_settings_and_closes() -> None:
-    """Validated runtime settings are forwarded to the official client"""
     with patch("app.search.client.AsyncElasticsearch") as client_class:
         client_class.return_value.close = AsyncMock()
         connection = ElasticsearchConnection(

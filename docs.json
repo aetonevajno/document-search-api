@@ -3,7 +3,7 @@
     "schemas": {
       "DocumentResponse": {
         "additionalProperties": false,
-        "description": "A complete document hydrated from PostgreSQL",
+        "description": "Document returned by the API",
         "properties": {
           "created_date": {
             "format": "date-time",
@@ -38,7 +38,7 @@
       },
       "ErrorResponse": {
         "additionalProperties": false,
-        "description": "Stable error envelope used by explicit API failures",
+        "description": "API error response",
         "properties": {
           "detail": {
             "title": "Detail",
@@ -66,7 +66,7 @@
       },
       "HealthResponse": {
         "additionalProperties": false,
-        "description": "Response returned when the API process is alive",
+        "description": "API health response",
         "properties": {
           "status": {
             "const": "ok",
@@ -128,7 +128,7 @@
   "paths": {
     "/documents/search": {
       "get": {
-        "description": "Return full documents for up to 20 Elasticsearch hits, newest first",
+        "description": "Return up to 20 matching documents, newest first",
         "operationId": "search_documents_documents_search_get",
         "parameters": [
           {
@@ -189,7 +189,7 @@
     },
     "/documents/{document_id}": {
       "delete": {
-        "description": "Delete a document from PostgreSQL and Elasticsearch idempotently",
+        "description": "Delete a document from PostgreSQL and Elasticsearch",
         "operationId": "delete_document_documents__document_id__delete",
         "parameters": [
           {
@@ -246,7 +246,7 @@
     },
     "/health": {
       "get": {
-        "description": "Report API process liveness without checking external dependencies",
+        "description": "Report whether the API process is running",
         "operationId": "health_check_health_get",
         "responses": {
           "200": {
@@ -260,7 +260,7 @@
             "description": "Successful Response"
           }
         },
-        "summary": "Check API liveness",
+        "summary": "Check API health",
         "tags": [
           "health"
         ]

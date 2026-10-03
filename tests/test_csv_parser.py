@@ -1,5 +1,3 @@
-"""Tests for strict source CSV parsing and deterministic UUIDs"""
-
 import csv
 from datetime import datetime
 from io import StringIO
@@ -20,7 +18,6 @@ def make_csv(
     header: list[str] | None = None,
     bom: bool = False,
 ) -> StringIO:
-    """Create a standards-compliant in-memory CSV for parser tests"""
     stream = StringIO(newline="")
     writer = csv.writer(stream)
     writer.writerow(header or ["text", "created_date", "rubrics"])
@@ -30,7 +27,6 @@ def make_csv(
 
 
 def test_parser_preserves_unicode_multiline_text_and_bom() -> None:
-    """Quoted multiline text and a UTF-8 BOM survive parsing unchanged"""
     stream = make_csv(
         [["Привет,\r\nмир", "2019-01-02 03:04:05", "['VK-1', 'рубрика']"]],
         bom=True,
@@ -49,7 +45,6 @@ def test_parser_preserves_unicode_multiline_text_and_bom() -> None:
 
 
 def test_parser_accepts_header_only_without_documents() -> None:
-    """An empty but structurally valid data set produces an empty plan"""
     plan = parse_document_csv_stream(make_csv([]))
 
     assert plan.rows_read == 0
@@ -66,13 +61,11 @@ def test_parser_accepts_header_only_without_documents() -> None:
     ],
 )
 def test_parser_rejects_invalid_headers(header: list[str]) -> None:
-    """Missing, unexpected, and duplicate columns fail before any import"""
     with pytest.raises(CsvImportError):
         parse_document_csv_stream(make_csv([], header=header))
 
 
 def test_parser_accepts_columns_in_any_order() -> None:
-    """Column names, rather than their positions, define the source contract"""
     stream = make_csv(
         [["[]", "text", "2019-01-02 03:04:05"]],
         header=["rubrics", "text", "created_date"],
@@ -95,14 +88,10 @@ def test_parser_accepts_columns_in_any_order() -> None:
     ],
 )
 def test_parser_rejects_invalid_rubrics_without_evaluation(rubrics: str) -> None:
-    """Rubrics use literal parsing and must be exactly a list of strings"""
     stream = make_csv([["text", "2019-01-02 03:04:05", rubrics]])
 
-    with pytest.raises(CsvImportError) as captured:
+    with pytest.raises(CsvImportError, match=r"record 2, field 'rubrics'"):
         parse_document_csv_stream(stream)
-
-    assert captured.value.field == "rubrics"
-    assert captured.value.record_number == 2
 
 
 @pytest.mark.parametrize(
@@ -116,17 +105,13 @@ def test_parser_rejects_invalid_rubrics_without_evaluation(rubrics: str) -> None
     ],
 )
 def test_parser_rejects_noncanonical_dates(created_date: str) -> None:
-    """Only the naive timestamp format present in the assignment is accepted"""
     stream = make_csv([["text", created_date, "[]"]])
 
-    with pytest.raises(CsvImportError) as captured:
+    with pytest.raises(CsvImportError, match=r"record 2, field 'created_date'"):
         parse_document_csv_stream(stream)
-
-    assert captured.value.field == "created_date"
 
 
 def test_parser_rejects_wrong_field_count() -> None:
-    """Short and long records cannot silently shift document fields"""
     source = StringIO("text,created_date,rubrics\nvalue,2019-01-02 03:04:05\n")
 
     with pytest.raises(CsvImportError, match="expected 3 fields, got 2"):
@@ -134,7 +119,6 @@ def test_parser_rejects_wrong_field_count() -> None:
 
 
 def test_parser_rejects_malformed_csv() -> None:
-    """Unclosed quoted fields are reported as CSV contract errors"""
     source = StringIO('text,created_date,rubrics\n"unclosed,2019-01-02 03:04:05,[]\n')
 
     with pytest.raises(CsvImportError):
@@ -142,7 +126,6 @@ def test_parser_rejects_malformed_csv() -> None:
 
 
 def test_parser_globally_collapses_identical_rows() -> None:
-    """Duplicates receive one stable UUID even when they are not adjacent"""
     row = ["same", "2019-01-02 03:04:05", "['A']"]
     stream = make_csv([row, ["different", "2019-01-02 03:04:05", "[]"], row])
 
@@ -154,7 +137,6 @@ def test_parser_globally_collapses_identical_rows() -> None:
 
 
 def test_parser_collapses_equivalent_rubric_literal_formatting() -> None:
-    """Literal whitespace and quote style do not alter the parsed document"""
     stream = make_csv(
         [
             ["same", "2019-01-02 03:04:05", "['A', 'B']"],
@@ -181,18 +163,16 @@ def test_parser_rejects_postgresql_incompatible_nul_characters(
     rubrics: str,
     field: str,
 ) -> None:
-    """NUL bytes fail validation before PostgreSQL can reject a batch"""
     stream = make_csv([[text, "2019-01-02 03:04:05", rubrics]])
 
-    with pytest.raises(CsvImportError, match="NUL") as captured:
+    with pytest.raises(
+        CsvImportError,
+        match=rf"record 2, field '{field}'.*NUL",
+    ):
         parse_document_csv_stream(stream)
-
-    assert captured.value.field == field
-    assert captured.value.record_number == 2
 
 
 def test_document_uuid_has_a_stable_golden_value() -> None:
-    """An accidental canonicalization change cannot rewrite every document ID"""
     document_id = make_document_id(
         text="Привет\nмир",
         created_date=datetime(2019, 1, 2, 3, 4, 5),
@@ -203,7 +183,6 @@ def test_document_uuid_has_a_stable_golden_value() -> None:
 
 
 def test_document_uuid_changes_with_every_source_field() -> None:
-    """Text, timestamp, rubrics, and rubric order all participate in identity"""
     base = make_document_id(
         text="text",
         created_date=datetime(2019, 1, 2, 3, 4, 5),

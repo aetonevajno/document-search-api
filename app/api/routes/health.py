@@ -1,5 +1,3 @@
-"""Service liveness endpoint"""
-
 from typing import Literal
 
 from fastapi import APIRouter, status
@@ -9,7 +7,7 @@ router = APIRouter(tags=["health"])
 
 
 class HealthResponse(BaseModel):
-    """Response returned when the API process is alive"""
+    """API health response"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -20,8 +18,8 @@ class HealthResponse(BaseModel):
     "/health",
     response_model=HealthResponse,
     status_code=status.HTTP_200_OK,
-    summary="Check API liveness",
+    summary="Check API health",
 )
 async def health_check() -> HealthResponse:
-    """Report API process liveness without checking external dependencies"""
+    """Report whether the API process is running"""
     return HealthResponse()

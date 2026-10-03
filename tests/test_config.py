@@ -1,12 +1,9 @@
-"""Tests for environment-driven settings"""
-
 import pytest
 
 from app.core.config import Settings
 
 
 def test_dependency_settings_can_be_overridden(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Container service addresses are loaded from environment variables"""
     monkeypatch.setenv(
         "APP_DATABASE_URL",
         "postgresql+asyncpg://app:password@postgres:5432/app",
@@ -36,7 +33,6 @@ def test_search_result_limit_must_match_contract(
     monkeypatch: pytest.MonkeyPatch,
     value: str,
 ) -> None:
-    """The configured limit must remain within the assignment contract"""
     monkeypatch.setenv("APP_SEARCH_RESULT_LIMIT", value)
 
     with pytest.raises(ValueError):
@@ -57,7 +53,6 @@ def test_elasticsearch_transport_settings_are_validated(
     name: str,
     value: str,
 ) -> None:
-    """Invalid operational values fail before external clients are created"""
     monkeypatch.setenv(name, value)
 
     with pytest.raises(ValueError):

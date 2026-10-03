@@ -1,5 +1,3 @@
-"""Tests for the document import command-line boundary"""
-
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -17,7 +15,6 @@ def test_cli_reports_missing_file_without_opening_storage(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Local file errors produce a concise non-zero result before connections"""
     missing_path = tmp_path / "missing.csv"
 
     exit_code = main([str(missing_path)], settings=Settings())
@@ -29,7 +26,6 @@ def test_cli_reports_missing_file_without_opening_storage(
 
 
 def test_cli_prints_stable_success_summary(capsys: pytest.CaptureFixture[str]) -> None:
-    """Operators receive counts useful for verifying an idempotent import"""
     plan = ImportPlan(rows_read=3, documents=())
     result = ImportResult(
         rows_read=3,
@@ -61,7 +57,6 @@ def test_cli_reports_storage_failures_without_traceback(
     error: Exception,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Expected backend failures become a concise exit-code-one result"""
     plan = ImportPlan(rows_read=0, documents=())
     with (
         patch("app.importers.cli.parse_document_csv", return_value=plan),
@@ -76,7 +71,6 @@ def test_cli_reports_storage_failures_without_traceback(
 
 
 async def test_run_import_always_closes_created_resources() -> None:
-    """Both clients close even when the import fails after construction"""
     plan = ImportPlan(rows_read=0, documents=())
     database = MagicMock()
     database.dispose = AsyncMock()

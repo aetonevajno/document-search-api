@@ -1,5 +1,3 @@
-"""Full-stack integration tests for the document HTTP API"""
-
 import os
 from datetime import datetime
 from typing import cast
@@ -22,14 +20,11 @@ pytestmark = pytest.mark.integration
 
 
 def _unique_russian_word() -> str:
-    """Return a Cyrillic-only token unlikely to occur outside this test"""
     alphabet = "абвгдежзийклмнопр"
     return "".join(alphabet[int(digit, 16)] for digit in uuid4().hex)
 
 
-@pytest.mark.asyncio
 async def test_search_and_delete_use_both_real_backends() -> None:
-    """Search returns full ordered rows and delete converges both stores"""
     database_url = os.getenv("TEST_DATABASE_URL")
     elasticsearch_url = os.getenv("TEST_ELASTICSEARCH_URL")
     index_name = os.getenv("TEST_ELASTICSEARCH_INDEX")

@@ -1,5 +1,3 @@
-"""Database models"""
-
 from datetime import datetime
 from uuid import UUID
 
@@ -12,8 +10,6 @@ from app.db.base import Base
 
 
 class Document(Base):
-    """A complete document stored in PostgreSQL"""
-
     __tablename__ = "documents"
 
     id: Mapped[UUID] = mapped_column(

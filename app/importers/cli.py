@@ -1,5 +1,3 @@
-"""Command-line entry point for importing the source CSV"""
-
 import argparse
 import asyncio
 import sys
@@ -27,7 +25,6 @@ def main(
     *,
     settings: Settings | None = None,
 ) -> int:
-    """Parse arguments, run the import, and return a process exit code"""
     parser = _build_parser()
     arguments = parser.parse_args(argv)
     try:
@@ -80,7 +77,7 @@ async def _run_import(plan: ImportPlan, settings: Settings) -> ImportResult:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="import-documents",
-        description="Import a validated CSV into PostgreSQL and Elasticsearch.",
+        description="Import documents from CSV into PostgreSQL and Elasticsearch.",
     )
     parser.add_argument(
         "csv_path",

@@ -1,6 +1,5 @@
-"""HTTP contract tests for document search and deletion"""
-
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import cast
 from uuid import UUID, uuid4
@@ -15,8 +14,6 @@ from app.services.documents import DocumentService, DocumentStorageUnavailableEr
 
 
 class StubDocumentService:
-    """Controllable service double exposed through FastAPI dependency overrides"""
-
     def __init__(
         self,
         *,
@@ -45,10 +42,10 @@ class StubDocumentService:
         return self.delete_results.pop(0)
 
 
+@asynccontextmanager
 async def make_client(
     service: StubDocumentService,
 ) -> AsyncIterator[AsyncClient]:
-    """Yield an HTTP client whose document service has no external side effects"""
     application = create_app()
     application.dependency_overrides[get_document_service] = lambda: cast(DocumentService, service)
     transport = ASGITransport(app=application)
@@ -57,7 +54,6 @@ async def make_client(
 
 
 async def test_search_serializes_complete_documents_and_preserves_order() -> None:
-    """The response contains every PostgreSQL field in service-provided order"""
     first_id = UUID("00000000-0000-0000-0000-000000000001")
     second_id = UUID("00000000-0000-0000-0000-000000000002")
     service = StubDocumentService(
@@ -77,7 +73,7 @@ async def test_search_serializes_complete_documents_and_preserves_order() -> Non
         ]
     )
 
-    async for client in make_client(service):
+    async with make_client(service) as client:
         response = await client.get("/documents/search", params={"q": "  космос  "})
 
     assert response.status_code == 200
@@ -102,10 +98,9 @@ async def test_search_serializes_complete_documents_and_preserves_order() -> Non
 async def test_search_rejects_missing_empty_and_blank_queries(
     params: dict[str, str] | None,
 ) -> None:
-    """Invalid queries fail validation before the service is called"""
     service = StubDocumentService()
 
-    async for client in make_client(service):
+    async with make_client(service) as client:
         response = await client.get("/documents/search", params=params)
 
     assert response.status_code == 422
@@ -113,14 +108,13 @@ async def test_search_rejects_missing_empty_and_blank_queries(
 
 
 async def test_search_returns_neutral_503_for_storage_failure() -> None:
-    """Internal backend details never leak through the HTTP response"""
     service = StubDocumentService(
         search_error=DocumentStorageUnavailableError(
             "postgresql://user:secret@internal-host/database"
         )
     )
 
-    async for client in make_client(service):
+    async with make_client(service) as client:
         response = await client.get("/documents/search", params={"q": "текст"})
 
     assert response.status_code == 503
@@ -129,11 +123,10 @@ async def test_search_returns_neutral_503_for_storage_failure() -> None:
 
 
 async def test_delete_returns_empty_204_then_404() -> None:
-    """Deletion is idempotent while accurately reporting already-absent data"""
     document_id = uuid4()
     service = StubDocumentService(delete_results=[True, False])
 
-    async for client in make_client(service):
+    async with make_client(service) as client:
         first = await client.delete(f"/documents/{document_id}")
         second = await client.delete(f"/documents/{document_id}")
 
@@ -145,10 +138,9 @@ async def test_delete_returns_empty_204_then_404() -> None:
 
 
 async def test_delete_rejects_invalid_uuid_before_service_call() -> None:
-    """Malformed path identifiers use FastAPI's standard validation response"""
     service = StubDocumentService(delete_results=[True])
 
-    async for client in make_client(service):
+    async with make_client(service) as client:
         response = await client.delete("/documents/not-a-uuid")
 
     assert response.status_code == 422
@@ -156,13 +148,12 @@ async def test_delete_rejects_invalid_uuid_before_service_call() -> None:
 
 
 async def test_delete_returns_neutral_503_for_storage_failure() -> None:
-    """An uncertain cross-storage result instructs the caller to retry"""
     document_id = uuid4()
     service = StubDocumentService(
         delete_error=DocumentStorageUnavailableError("elasticsearch.internal:9200")
     )
 
-    async for client in make_client(service):
+    async with make_client(service) as client:
         response = await client.delete(f"/documents/{document_id}")
 
     assert response.status_code == 503
@@ -171,15 +162,14 @@ async def test_delete_returns_neutral_503_for_storage_failure() -> None:
 
 
 async def test_document_routes_are_fully_described_in_openapi() -> None:
-    """Generated documentation exposes the success and failure contracts"""
     service = StubDocumentService()
 
-    async for client in make_client(service):
+    async with make_client(service) as client:
         schema = (await client.get("/openapi.json")).json()
 
     search = schema["paths"]["/documents/search"]["get"]
     delete = schema["paths"]["/documents/{document_id}"]["delete"]
     assert set(search["responses"]) >= {"200", "422", "503"}
     assert set(delete["responses"]) >= {"204", "404", "422", "503"}
-    assert search["parameters"][0]["name"] == "q"
-    assert delete["parameters"][0]["name"] == "document_id"
+    assert {parameter["name"] for parameter in search["parameters"]} == {"q"}
+    assert {parameter["name"] for parameter in delete["parameters"]} == {"document_id"}

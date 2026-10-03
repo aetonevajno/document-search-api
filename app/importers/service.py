@@ -1,5 +1,3 @@
-"""Idempotent orchestration of PostgreSQL and Elasticsearch imports"""
-
 from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Protocol
@@ -11,15 +9,11 @@ from app.importers.csv_parser import ImportDocument, ImportPlan
 from app.search.index import SearchDocument
 
 
-class DocumentBatchSink(Protocol):
-    """Persist one committed batch of complete documents"""
-
+class _DocumentSink(Protocol):
     async def upsert_many(self, documents: Collection[ImportDocument]) -> None: ...
 
 
-class SearchIndexSink(Protocol):
-    """Maintain the searchable representation of imported documents"""
-
+class _SearchIndex(Protocol):
     async def ensure_exists(self) -> None: ...
 
     async def upsert_many(self, documents: Collection[SearchDocument]) -> None: ...
@@ -28,13 +22,10 @@ class SearchIndexSink(Protocol):
 
 
 class PostgreSQLDocumentSink:
-    """Commit each import batch in its own PostgreSQL transaction"""
-
     def __init__(self, database: Database) -> None:
         self._database = database
 
     async def upsert_many(self, documents: Collection[ImportDocument]) -> None:
-        """Upsert a complete batch and commit before returning"""
         models = [
             Document(
                 id=document.id,
@@ -50,8 +41,6 @@ class PostgreSQLDocumentSink:
 
 @dataclass(frozen=True, slots=True)
 class ImportResult:
-    """Stable summary printed by the CLI and asserted by tests"""
-
     rows_read: int
     unique_documents: int
     duplicate_rows: int
@@ -59,12 +48,10 @@ class ImportResult:
 
 
 class DocumentImportService:
-    """Write PostgreSQL first, then Elasticsearch, one batch at a time"""
-
     def __init__(
         self,
-        document_sink: DocumentBatchSink,
-        search_index: SearchIndexSink,
+        document_sink: _DocumentSink,
+        search_index: _SearchIndex,
         *,
         batch_size: int,
     ) -> None:
@@ -75,7 +62,6 @@ class DocumentImportService:
         self._batch_size = batch_size
 
     async def import_plan(self, plan: ImportPlan) -> ImportResult:
-        """Execute a fully validated plan without hiding partial failures"""
         await self._search_index.ensure_exists()
         batches_processed = 0
         for offset in range(0, len(plan.documents), self._batch_size):

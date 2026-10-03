@@ -1,10 +1,6 @@
-"""End-to-end integration test for the CSV import pipeline"""
-
 import csv
 import os
-from collections.abc import Mapping
 from io import StringIO
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -23,9 +19,7 @@ from app.search.index import DocumentSearchIndex
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.asyncio
 async def test_repeated_csv_import_is_idempotent_across_both_backends() -> None:
-    """A repeated import preserves full rows in PostgreSQL and id/text in Elasticsearch"""
     database_url = os.getenv("TEST_DATABASE_URL")
     elasticsearch_url = os.getenv("TEST_ELASTICSEARCH_URL")
     index_name = os.getenv("TEST_ELASTICSEARCH_INDEX")
@@ -109,10 +103,9 @@ async def test_repeated_csv_import_is_idempotent_across_both_backends() -> None:
             index=index_name,
             id=str(document.id),
         )
-        indexed_body = cast(Mapping[str, object], indexed_response.body)
-        indexed_source = cast(Mapping[str, object], indexed_body["_source"])
+        indexed_body = indexed_response.body
         assert indexed_body["_id"] == str(document.id)
-        assert indexed_source == {
+        assert indexed_body["_source"] == {
             "id": str(document.id),
             "text": expected_text,
         }

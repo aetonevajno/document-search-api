@@ -1,5 +1,3 @@
-"""Document search and deletion endpoints"""
-
 import logging
 from typing import Annotated
 from uuid import UUID
@@ -24,7 +22,6 @@ def get_document_service(
         Depends(get_document_search_index),
     ],
 ) -> DocumentService:
-    """Build a request-scoped document service"""
     return DocumentService(session, search_index)
 
 
@@ -51,11 +48,11 @@ async def search_documents(
         ),
     ],
 ) -> list[DocumentResponse]:
-    """Return full documents for up to 20 Elasticsearch hits, newest first"""
+    """Return up to 20 matching documents, newest first"""
     try:
         documents = await service.search(q.strip())
     except DocumentStorageUnavailableError as error:
-        logger.exception("Document search failed because a storage backend is unavailable")
+        logger.exception("Document search failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Document storage is temporarily unavailable",
@@ -83,11 +80,11 @@ async def delete_document(
     document_id: UUID,
     service: Annotated[DocumentService, Depends(get_document_service)],
 ) -> Response:
-    """Delete a document from PostgreSQL and Elasticsearch idempotently"""
+    """Delete a document from PostgreSQL and Elasticsearch"""
     try:
         deleted = await service.delete(document_id)
     except DocumentStorageUnavailableError as error:
-        logger.exception("Document deletion failed because a storage backend is unavailable")
+        logger.exception("Document deletion failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Document storage is temporarily unavailable",

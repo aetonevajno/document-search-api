@@ -1,5 +1,3 @@
-"""Unit tests for document use cases across both storage backends"""
-
 import logging
 from datetime import datetime
 from types import TracebackType
@@ -21,7 +19,6 @@ def make_document(
     *,
     created_date: datetime | None = None,
 ) -> Document:
-    """Build a complete document without touching a database"""
     return Document(
         id=document_id,
         rubrics=["рубрика"],
@@ -31,7 +28,6 @@ def make_document(
 
 
 def make_dependencies() -> tuple[AsyncSession, MagicMock, DocumentSearchIndex, MagicMock]:
-    """Create typed session and Elasticsearch adapter doubles"""
     session_mock = MagicMock(spec=AsyncSession)
     session_mock.get = AsyncMock()
     session_mock.scalars = AsyncMock()
@@ -50,7 +46,6 @@ def make_dependencies() -> tuple[AsyncSession, MagicMock, DocumentSearchIndex, M
 
 
 def configure_transaction(session_mock: MagicMock) -> MagicMock:
-    """Make AsyncSession.begin() behave as an async context manager"""
     transaction = MagicMock()
     transaction.__aenter__ = AsyncMock(return_value=None)
     transaction.__aexit__ = AsyncMock(return_value=False)
@@ -59,7 +54,6 @@ def configure_transaction(session_mock: MagicMock) -> MagicMock:
 
 
 async def test_search_returns_postgresql_order_for_elasticsearch_hits() -> None:
-    """PostgreSQL's date/id ordering is preserved instead of relevance order"""
     session, session_mock, index, index_mock = make_dependencies()
     older_id = uuid4()
     newer_id = uuid4()
@@ -78,7 +72,6 @@ async def test_search_returns_postgresql_order_for_elasticsearch_hits() -> None:
 
 
 async def test_search_empty_hits_does_not_query_postgresql() -> None:
-    """A no-hit Elasticsearch response avoids a redundant database query"""
     session, session_mock, index, index_mock = make_dependencies()
     index_mock.search_ids.return_value = []
 
@@ -90,7 +83,6 @@ async def test_search_empty_hits_does_not_query_postgresql() -> None:
 async def test_search_filters_and_logs_stale_index_ids(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Index-only IDs are omitted and reported without leaking query text"""
     session, session_mock, index, index_mock = make_dependencies()
     present_id = uuid4()
     stale_id = uuid4()
@@ -110,7 +102,6 @@ async def test_search_filters_and_logs_stale_index_ids(
 
 @pytest.mark.parametrize("backend", ["search", "database"])
 async def test_search_maps_expected_backend_failures(backend: str) -> None:
-    """Known storage errors become one domain-level availability failure"""
     session, session_mock, index, index_mock = make_dependencies()
     if backend == "search":
         index_mock.search_ids.side_effect = SearchIndexError("invalid response")
@@ -136,7 +127,6 @@ async def test_delete_truth_table(
     index_exists: bool,
     expected: bool,
 ) -> None:
-    """A document counts as deleted when it existed in either backend"""
     session, session_mock, index, index_mock = make_dependencies()
     configure_transaction(session_mock)
     document_id = uuid4()
@@ -151,7 +141,6 @@ async def test_delete_truth_table(
 
 
 async def test_delete_commits_database_before_deleting_from_index() -> None:
-    """The source-of-truth transaction completes before Elasticsearch changes"""
     session, session_mock, index, index_mock = make_dependencies()
     transaction = configure_transaction(session_mock)
     document_id = uuid4()
@@ -179,7 +168,6 @@ async def test_delete_commits_database_before_deleting_from_index() -> None:
 
 
 async def test_delete_database_failure_skips_index() -> None:
-    """A failed source-of-truth transaction does not worsen consistency"""
     session, session_mock, index, index_mock = make_dependencies()
     configure_transaction(session_mock)
     session_mock.get.side_effect = SQLAlchemyError("database unavailable")
@@ -191,7 +179,6 @@ async def test_delete_database_failure_skips_index() -> None:
 
 
 async def test_delete_commit_failure_skips_index() -> None:
-    """Elasticsearch is untouched when PostgreSQL cannot confirm its commit"""
     session, session_mock, index, index_mock = make_dependencies()
     transaction = configure_transaction(session_mock)
     document_id = uuid4()
@@ -205,7 +192,6 @@ async def test_delete_commit_failure_skips_index() -> None:
 
 
 async def test_delete_index_failure_after_commit_is_retryable() -> None:
-    """A second call can remove a stale index entry after PostgreSQL committed"""
     session, session_mock, index, index_mock = make_dependencies()
     configure_transaction(session_mock)
     document_id = uuid4()

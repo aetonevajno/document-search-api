@@ -1,5 +1,3 @@
-"""Top-level API router"""
-
 from fastapi import APIRouter
 
 from app.api.routes.documents import router as documents_router

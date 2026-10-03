@@ -1,5 +1,3 @@
-"""Tests for the API liveness endpoint"""
-
 from httpx import ASGITransport, AsyncClient
 
 from app.core.version import get_application_version
@@ -7,7 +5,6 @@ from app.main import create_app
 
 
 async def test_health_check() -> None:
-    """The liveness endpoint reports a healthy API process"""
     transport = ASGITransport(app=create_app())
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/health")
@@ -18,7 +15,6 @@ async def test_health_check() -> None:
 
 
 async def test_health_is_in_openapi_schema() -> None:
-    """The liveness endpoint is part of the generated API contract"""
     transport = ASGITransport(app=create_app())
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         schema = (await client.get("/openapi.json")).json()

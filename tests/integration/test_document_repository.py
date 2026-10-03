@@ -1,5 +1,3 @@
-"""PostgreSQL integration tests for document persistence"""
-
 import os
 from collections.abc import AsyncIterator
 from datetime import datetime
@@ -19,7 +17,6 @@ pytestmark = pytest.mark.integration
 
 @pytest_asyncio.fixture
 async def database() -> AsyncIterator[Database]:
-    """Create a clean schema in an explicitly dedicated test database"""
     database_url = os.getenv("TEST_DATABASE_URL")
     if database_url is None:
         pytest.skip("TEST_DATABASE_URL is required for PostgreSQL integration tests")
@@ -40,9 +37,7 @@ async def database() -> AsyncIterator[Database]:
         await database.dispose()
 
 
-@pytest.mark.asyncio
 async def test_document_round_trip_and_delete(database: Database) -> None:
-    """PostgreSQL preserves UUID, arrays, Unicode text, and naive timestamps"""
     document = Document(
         id=uuid4(),
         rubrics=["VK-1", "кириллица", "with space"],
@@ -51,7 +46,7 @@ async def test_document_round_trip_and_delete(database: Database) -> None:
     )
 
     async with database.session_factory.begin() as session:
-        await DocumentRepository(session).add(document)
+        await DocumentRepository(session).upsert_many([document])
 
     async with database.session_factory() as session:
         stored = await DocumentRepository(session).get(document.id)
@@ -72,9 +67,7 @@ async def test_document_round_trip_and_delete(database: Database) -> None:
         assert await DocumentRepository(session).get(document.id) is None
 
 
-@pytest.mark.asyncio
 async def test_caller_transaction_rolls_back_repository_write(database: Database) -> None:
-    """An exception rolls back repository changes because it never commits itself"""
     document = Document(
         id=uuid4(),
         rubrics=[],
@@ -84,16 +77,14 @@ async def test_caller_transaction_rolls_back_repository_write(database: Database
 
     with pytest.raises(RuntimeError, match="force rollback"):
         async with database.session_factory.begin() as session:
-            await DocumentRepository(session).add(document)
+            await DocumentRepository(session).upsert_many([document])
             raise RuntimeError("force rollback")
 
     async with database.session_factory() as session:
         assert await DocumentRepository(session).get(document.id) is None
 
 
-@pytest.mark.asyncio
 async def test_upsert_many_updates_existing_document(database: Database) -> None:
-    """Bulk upsert is idempotent and updates mutable document fields"""
     document_id = uuid4()
     original = Document(
         id=document_id,
@@ -122,11 +113,9 @@ async def test_upsert_many_updates_existing_document(database: Database) -> None
     assert stored.created_date == datetime(2019, 2, 1, 0, 0, 0)
 
 
-@pytest.mark.asyncio
 async def test_upsert_many_uses_last_duplicate_in_same_batch(
     database: Database,
 ) -> None:
-    """Duplicate deterministic IDs are collapsed before PostgreSQL sees them"""
     document_id = uuid4()
     first = Document(
         id=document_id,
@@ -153,11 +142,9 @@ async def test_upsert_many_uses_last_duplicate_in_same_batch(
     assert stored.created_date == datetime(2019, 3, 1, 0, 0, 0)
 
 
-@pytest.mark.asyncio
 async def test_get_many_filters_deduplicates_and_orders_for_search(
     database: Database,
 ) -> None:
-    """Hydrated hits are newest first with UUID as the stable tie-breaker"""
     first_id = UUID("00000000-0000-0000-0000-000000000001")
     second_id = UUID("00000000-0000-0000-0000-000000000002")
     older_id = UUID("00000000-0000-0000-0000-000000000003")
