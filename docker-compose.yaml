@@ -13,6 +13,7 @@ x-app-environment: &app-environment
   APP_DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-document_search}:${POSTGRES_PASSWORD:-document_search_local}@postgres:5432/${POSTGRES_DB:-document_search}"
   APP_ELASTICSEARCH_URL: http://elasticsearch:9200
   APP_ELASTICSEARCH_INDEX: ${APP_ELASTICSEARCH_INDEX:-documents}
+  APP_SEARCH_RESULT_LIMIT: ${APP_SEARCH_RESULT_LIMIT:-20}
 
 services:
   api:

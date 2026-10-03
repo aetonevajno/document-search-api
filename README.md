@@ -67,10 +67,37 @@ APP_DATABASE_URL="$TEST_DATABASE_URL" python -m alembic upgrade head
 python -m pytest -m integration
 ```
 
+## Elasticsearch
+
+Elasticsearch хранит только поисковое представление документа: `id` и
+`text`. При старте API индекс создаётся идемпотентно и проверяется на
+совместимость со строгим mapping:
+
+- неизвестные поля запрещены через `dynamic: strict`;
+- `id` имеет тип `keyword`;
+- `text` имеет тип `text` и использует встроенный анализатор `russian`.
+
+Асинхронный адаптер поддерживает пакетный upsert, поиск не более 20 UUID в
+порядке релевантности, удаление и явный refresh. Bulk-ответ проверяется на
+ошибки каждого элемента; частично неуспешная индексация не маскируется.
+Лимит задаётся переменной `APP_SEARCH_RESULT_LIMIT`; значение по умолчанию
+`20` соответствует исходному заданию.
+
+Интеграционные тесты используют отдельный индекс с суффиксом `-test`:
+
+```bash
+docker compose up -d --wait elasticsearch
+export TEST_ELASTICSEARCH_URL='http://127.0.0.1:9200'
+export TEST_ELASTICSEARCH_INDEX='documents-test'
+python -m pytest -m integration tests/integration/test_search_index.py
+```
+
 ## Локальный запуск
 
-Требуется Python 3.12–3.14. На текущем этапе приложение запускается без
-PostgreSQL и Elasticsearch: `/health` проверяет только работоспособность API.
+Требуется Python 3.12–3.14. При запуске приложение подключается к
+Elasticsearch, создаёт или проверяет индекс и завершает старт с ошибкой, если
+сервис недоступен либо mapping несовместим. `/health` остаётся liveness-проверкой
+самого API и не опрашивает внешние хранилища на каждый запрос.
 
 ```bash
 python3.12 -m venv .venv

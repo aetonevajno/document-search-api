@@ -4,6 +4,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +37,7 @@ class Settings(BaseSettings):
     )
     elasticsearch_url: str = "http://127.0.0.1:9200"
     elasticsearch_index: str = "documents"
+    search_result_limit: PositiveInt = 20
 
 
 @lru_cache
