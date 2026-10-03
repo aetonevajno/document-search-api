@@ -68,8 +68,6 @@ class DocumentSearchIndex:
         index_name: str,
         result_limit: int,
     ) -> None:
-        if result_limit <= 0:
-            raise ValueError("result_limit must be positive")
         self._client = client
         self.index_name = index_name
         self.result_limit = result_limit

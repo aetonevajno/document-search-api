@@ -8,6 +8,7 @@ import pytest
 import pytest_asyncio
 from elasticsearch import BadRequestError
 
+from app.core.config import Settings
 from app.search.client import ElasticsearchConnection
 from app.search.index import DocumentSearchIndex, SearchDocument
 
@@ -27,7 +28,13 @@ async def search_index() -> AsyncIterator[DocumentSearchIndex]:
     if not index_name.endswith("-test"):
         pytest.fail("integration tests require an Elasticsearch index ending in '-test'")
 
-    connection = ElasticsearchConnection(elasticsearch_url)
+    settings = Settings()
+    connection = ElasticsearchConnection(
+        elasticsearch_url,
+        request_timeout_seconds=settings.elasticsearch_request_timeout_seconds,
+        max_retries=settings.elasticsearch_max_retries,
+        retry_on_timeout=settings.elasticsearch_retry_on_timeout,
+    )
     index = DocumentSearchIndex(connection.client, index_name, result_limit=20)
     if await connection.client.indices.exists(index=index_name):
         await connection.client.indices.delete(index=index_name)

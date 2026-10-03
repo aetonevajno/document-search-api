@@ -2,6 +2,7 @@
 
 from httpx import ASGITransport, AsyncClient
 
+from app.core.version import get_application_version
 from app.main import create_app
 
 
@@ -23,3 +24,4 @@ async def test_health_is_in_openapi_schema() -> None:
         schema = (await client.get("/openapi.json")).json()
 
     assert "/health" in schema["paths"]
+    assert schema["info"]["version"] == get_application_version()

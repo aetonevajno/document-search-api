@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
+from app.core.version import get_application_version
 from app.db.session import Database
 from app.search.client import ElasticsearchConnection
 from app.search.index import DocumentSearchIndex
@@ -16,7 +17,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Create an application instance without external-service side effects."""
     app_settings = settings or get_settings()
     database = Database(app_settings.database_url)
-    elasticsearch = ElasticsearchConnection(app_settings.elasticsearch_url)
+    elasticsearch = ElasticsearchConnection(
+        app_settings.elasticsearch_url,
+        request_timeout_seconds=app_settings.elasticsearch_request_timeout_seconds,
+        max_retries=app_settings.elasticsearch_max_retries,
+        retry_on_timeout=app_settings.elasticsearch_retry_on_timeout,
+    )
     document_search_index = DocumentSearchIndex(
         elasticsearch.client,
         app_settings.elasticsearch_index,
@@ -36,7 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     application = FastAPI(
         title=app_settings.name,
-        version=app_settings.version,
+        version=get_application_version(),
         debug=app_settings.debug,
         lifespan=lifespan,
     )

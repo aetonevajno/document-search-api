@@ -37,7 +37,7 @@ RUN python -m pip install \
         --no-cache-dir \
         --no-index \
         --find-links=/wheels \
-        document-search-api==0.1.0 \
+        document-search-api \
     && rm -rf /wheels
 
 WORKDIR /app
