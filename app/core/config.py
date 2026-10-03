@@ -1,4 +1,4 @@
-"""Environment-driven application settings."""
+"""Environment-driven application settings"""
 
 from functools import lru_cache
 
@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables and `.env`."""
+    """Application settings loaded from environment variables and `.env`"""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -28,9 +28,10 @@ class Settings(BaseSettings):
     elasticsearch_max_retries: int = Field(default=3, ge=0)
     elasticsearch_retry_on_timeout: bool = True
     search_result_limit: int = Field(default=20, ge=1, le=20)
+    import_batch_size: int = Field(default=500, ge=1, le=5000)
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return one validated settings object per process."""
+    """Return one validated settings object per process"""
     return Settings()

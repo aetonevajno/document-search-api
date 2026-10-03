@@ -101,6 +101,36 @@ export TEST_ELASTICSEARCH_INDEX='documents-test'
 python -m pytest -m integration tests/integration/test_search_index.py
 ```
 
+## Импорт CSV
+
+Исходный [`posts.csv`](https://disk.yandex.ru/d/UYooXd9q2yqTMQ) загружается
+отдельной командой. Перед обращением к хранилищам файл полностью разбирается и
+валидируется. Идентификатор каждого документа — стабильный UUIDv5 от
+канонического представления `text`, `created_date` и `rubrics`, поэтому
+повторный запуск не создаёт дубликаты.
+
+При локальном запуске:
+
+```bash
+import-documents ./posts.csv
+# Эквивалентно: python -m app.importers ./posts.csv
+```
+
+Через Docker Compose файл передаётся в одноразовый контейнер только для
+чтения:
+
+```bash
+docker compose run --rm \
+  --volume "$PWD/posts.csv:/data/posts.csv:ro" \
+  api import-documents /data/posts.csv
+```
+
+Размер пакета настраивается через `APP_IMPORT_BATCH_SIZE`, по умолчанию равен
+`500` и ограничен диапазоном от 1 до 5000. Каждый пакет сначала коммитится в
+PostgreSQL, затем индексируется в Elasticsearch. Если Elasticsearch временно
+недоступен, команда завершается с ошибкой, а безопасный повторный запуск
+дополняет индекс благодаря стабильным UUID и upsert-операциям.
+
 ## Локальный запуск
 
 Требуется Python 3.12–3.14. При запуске приложение подключается к
@@ -114,6 +144,7 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e '.[dev]'
 cp .env.example .env
+python -m alembic upgrade head
 python -m uvicorn app.main:app --reload
 ```
 
@@ -122,6 +153,10 @@ python -m uvicorn app.main:app --reload
 - liveness-проверка: <http://127.0.0.1:8000/health>;
 - Swagger UI: <http://127.0.0.1:8000/docs>;
 - схема OpenAPI: <http://127.0.0.1:8000/openapi.json>.
+
+Статическая копия той же схемы находится в корневом `docs.json`. Тестовый
+набор сравнивает её с генерируемой FastAPI схемой, поэтому изменения API без
+обновления документации сразу обнаруживаются.
 
 Версия в OpenAPI берётся непосредственно из метаданных пакета в
 `pyproject.toml`, поэтому отдельная переменная окружения для неё не нужна.
@@ -167,7 +202,7 @@ python -m mypy
 
 ### Поиск документов
 
-Планируемый метод:
+Метод:
 
 ```http
 GET /documents/search?q=<query>
@@ -188,6 +223,14 @@ GET /documents/search?q=<query>
 - Если ID найден в индексе, но отсутствует в PostgreSQL, такой результат не
   возвращается и рассинхронизация записывается в журнал.
 
+Пример запроса:
+
+```bash
+curl --get \
+  --data-urlencode 'q=космическая программа' \
+  http://127.0.0.1:8000/documents/search
+```
+
 Таким образом, «первые 20 документов» трактуются как 20 наиболее релевантных
 результатов Elasticsearch, которые перед возвратом упорядочиваются по дате.
 Это позволяет соблюдать заданную структуру индекса без добавления в него
@@ -195,13 +238,14 @@ GET /documents/search?q=<query>
 
 ### Удаление документа
 
-Планируемый метод:
+Метод:
 
 ```http
-DELETE /documents/{id}
+DELETE /documents/{document_id}
 ```
 
-- Сервис пытается удалить документ и из PostgreSQL, и из Elasticsearch.
+- Сервис сначала удаляет документ и фиксирует транзакцию в PostgreSQL, затем
+  удаляет его из Elasticsearch.
 - `204 No Content` возвращается, если удаление завершено и документ
   существовал хотя бы в одном из хранилищ.
 - `404 Not Found` возвращается, если документа нет ни в PostgreSQL, ни в
@@ -210,6 +254,16 @@ DELETE /documents/{id}
   хранилищ, возвращается `503 Service Unavailable`.
 - Операция безопасна для повторного выполнения: повторный запрос не меняет
   итоговое состояние, даже если его HTTP-статус изменится с `204` на `404`.
+- При ошибке PostgreSQL индекс не изменяется. Если PostgreSQL уже зафиксировал
+  удаление, а Elasticsearch временно недоступен, ответом будет `503`; повтор
+  того же запроса удалит оставшуюся индексную запись.
+
+Пример запроса:
+
+```bash
+curl --include --request DELETE \
+  http://127.0.0.1:8000/documents/760a584e-187f-539d-957d-ca741171a875
+```
 
 ### Границы задания
 

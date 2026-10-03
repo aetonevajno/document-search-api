@@ -1,9 +1,9 @@
-"""PostgreSQL integration tests for document persistence."""
+"""PostgreSQL integration tests for document persistence"""
 
 import os
 from collections.abc import AsyncIterator
 from datetime import datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.integration
 
 @pytest_asyncio.fixture
 async def database() -> AsyncIterator[Database]:
-    """Create a clean schema in an explicitly dedicated test database."""
+    """Create a clean schema in an explicitly dedicated test database"""
     database_url = os.getenv("TEST_DATABASE_URL")
     if database_url is None:
         pytest.skip("TEST_DATABASE_URL is required for PostgreSQL integration tests")
@@ -42,7 +42,7 @@ async def database() -> AsyncIterator[Database]:
 
 @pytest.mark.asyncio
 async def test_document_round_trip_and_delete(database: Database) -> None:
-    """PostgreSQL preserves UUID, arrays, Unicode text, and naive timestamps."""
+    """PostgreSQL preserves UUID, arrays, Unicode text, and naive timestamps"""
     document = Document(
         id=uuid4(),
         rubrics=["VK-1", "кириллица", "with space"],
@@ -74,7 +74,7 @@ async def test_document_round_trip_and_delete(database: Database) -> None:
 
 @pytest.mark.asyncio
 async def test_caller_transaction_rolls_back_repository_write(database: Database) -> None:
-    """An exception rolls back repository changes because it never commits itself."""
+    """An exception rolls back repository changes because it never commits itself"""
     document = Document(
         id=uuid4(),
         rubrics=[],
@@ -93,7 +93,7 @@ async def test_caller_transaction_rolls_back_repository_write(database: Database
 
 @pytest.mark.asyncio
 async def test_upsert_many_updates_existing_document(database: Database) -> None:
-    """Bulk upsert is idempotent and updates mutable document fields."""
+    """Bulk upsert is idempotent and updates mutable document fields"""
     document_id = uuid4()
     original = Document(
         id=document_id,
@@ -126,7 +126,7 @@ async def test_upsert_many_updates_existing_document(database: Database) -> None
 async def test_upsert_many_uses_last_duplicate_in_same_batch(
     database: Database,
 ) -> None:
-    """Duplicate deterministic IDs are collapsed before PostgreSQL sees them."""
+    """Duplicate deterministic IDs are collapsed before PostgreSQL sees them"""
     document_id = uuid4()
     first = Document(
         id=document_id,
@@ -151,3 +151,49 @@ async def test_upsert_many_uses_last_duplicate_in_same_batch(
     assert stored.rubrics == ["VK-last"]
     assert stored.text == "Последняя версия"
     assert stored.created_date == datetime(2019, 3, 1, 0, 0, 0)
+
+
+@pytest.mark.asyncio
+async def test_get_many_filters_deduplicates_and_orders_for_search(
+    database: Database,
+) -> None:
+    """Hydrated hits are newest first with UUID as the stable tie-breaker"""
+    first_id = UUID("00000000-0000-0000-0000-000000000001")
+    second_id = UUID("00000000-0000-0000-0000-000000000002")
+    older_id = UUID("00000000-0000-0000-0000-000000000003")
+    unrelated_id = UUID("00000000-0000-0000-0000-000000000004")
+    documents = [
+        Document(
+            id=older_id,
+            rubrics=[],
+            text="older",
+            created_date=datetime(2019, 1, 1, 0, 0, 0),
+        ),
+        Document(
+            id=second_id,
+            rubrics=[],
+            text="same date, second UUID",
+            created_date=datetime(2020, 1, 1, 0, 0, 0),
+        ),
+        Document(
+            id=first_id,
+            rubrics=[],
+            text="same date, first UUID",
+            created_date=datetime(2020, 1, 1, 0, 0, 0),
+        ),
+        Document(
+            id=unrelated_id,
+            rubrics=[],
+            text="must not be returned",
+            created_date=datetime(2021, 1, 1, 0, 0, 0),
+        ),
+    ]
+    async with database.session_factory.begin() as session:
+        await DocumentRepository(session).upsert_many(documents)
+
+    async with database.session_factory() as session:
+        result = await DocumentRepository(session).get_many(
+            [second_id, older_id, first_id, second_id]
+        )
+
+    assert [document.id for document in result] == [first_id, second_id, older_id]

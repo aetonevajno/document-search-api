@@ -1,4 +1,4 @@
-"""Shared SQLAlchemy declarative base."""
+"""Shared SQLAlchemy declarative base"""
 
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase
@@ -13,6 +13,6 @@ NAMING_CONVENTION = {
 
 
 class Base(DeclarativeBase):
-    """Base class for all database models."""
+    """Base class for all database models"""
 
     metadata = MetaData(naming_convention=NAMING_CONVENTION)

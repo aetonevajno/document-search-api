@@ -1,4 +1,4 @@
-"""Async SQLAlchemy engine, session factory, and FastAPI dependency."""
+"""Async SQLAlchemy engine, session factory, and FastAPI dependency"""
 
 from collections.abc import AsyncIterator
 from typing import Annotated, cast
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import (
 
 
 class Database:
-    """Own an async engine and create independent request-scoped sessions."""
+    """Own an async engine and create independent request-scoped sessions"""
 
     def __init__(self, database_url: str) -> None:
         self.engine: AsyncEngine = create_async_engine(
@@ -28,18 +28,18 @@ class Database:
         )
 
     async def dispose(self) -> None:
-        """Release all pooled database connections."""
+        """Release all pooled database connections"""
         await self.engine.dispose()
 
 
 def get_database(request: Request) -> Database:
-    """Return the database object owned by the current application."""
+    """Return the database object owned by the current application"""
     return cast(Database, request.app.state.database)
 
 
 async def get_session(
     database: Annotated[Database, Depends(get_database)],
 ) -> AsyncIterator[AsyncSession]:
-    """Yield one session; transaction commit or rollback belongs to the caller."""
+    """Yield one session; transaction commit or rollback belongs to the caller"""
     async with database.session_factory() as session:
         yield session

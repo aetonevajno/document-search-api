@@ -1,1 +1,1 @@
-"""Test suite package."""
+"""Test suite package"""

@@ -1,4 +1,4 @@
-"""Elasticsearch integration package."""
+"""Elasticsearch integration package"""
 
 from app.search.client import ElasticsearchConnection
 from app.search.index import (

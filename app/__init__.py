@@ -1,1 +1,1 @@
-"""Document search API package."""
+"""Document search API package"""

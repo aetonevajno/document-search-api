@@ -1,4 +1,4 @@
-"""Integration tests for the real Elasticsearch document index."""
+"""Integration tests for the real Elasticsearch document index"""
 
 import os
 from collections.abc import AsyncIterator
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.integration
 
 @pytest_asyncio.fixture
 async def search_index() -> AsyncIterator[DocumentSearchIndex]:
-    """Create an isolated index whose name explicitly marks it as test-only."""
+    """Create an isolated index whose name explicitly marks it as test-only"""
     elasticsearch_url = os.getenv("TEST_ELASTICSEARCH_URL")
     index_name = os.getenv("TEST_ELASTICSEARCH_INDEX")
     if elasticsearch_url is None or index_name is None:
@@ -53,7 +53,7 @@ async def search_index() -> AsyncIterator[DocumentSearchIndex]:
 async def test_index_is_idempotent_and_rejects_unknown_fields(
     search_index: DocumentSearchIndex,
 ) -> None:
-    """The required mapping survives repeated setup and remains strict."""
+    """The required mapping survives repeated setup and remains strict"""
     await search_index.ensure_exists()
 
     with pytest.raises(BadRequestError):
@@ -65,7 +65,7 @@ async def test_index_is_idempotent_and_rejects_unknown_fields(
 
 
 async def test_upsert_search_update_and_delete(search_index: DocumentSearchIndex) -> None:
-    """Russian text is searchable and all write operations are idempotent."""
+    """Russian text is searchable and all write operations are idempotent"""
     document_id = uuid4()
     other_id = uuid4()
     await search_index.upsert_many(

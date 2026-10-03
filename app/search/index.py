@@ -1,4 +1,4 @@
-"""Document index operations backed by Elasticsearch."""
+"""Document index operations backed by Elasticsearch"""
 
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
@@ -19,20 +19,20 @@ INDEX_MAPPINGS: dict[str, object] = {
 
 
 class SearchIndexError(RuntimeError):
-    """Base error for invalid index state or Elasticsearch responses."""
+    """Base error for invalid index state or Elasticsearch responses"""
 
 
 class IncompatibleIndexError(SearchIndexError):
-    """The configured index exists with an incompatible mapping."""
+    """The configured index exists with an incompatible mapping"""
 
 
 class InvalidSearchResponseError(SearchIndexError):
-    """Elasticsearch returned a response that violates the adapter contract."""
+    """Elasticsearch returned a response that violates the adapter contract"""
 
 
 @dataclass(frozen=True, slots=True)
 class SearchDocument:
-    """The subset of a document stored in Elasticsearch."""
+    """The subset of a document stored in Elasticsearch"""
 
     id: UUID
     text: str
@@ -40,7 +40,7 @@ class SearchDocument:
 
 @dataclass(frozen=True, slots=True)
 class BulkFailure:
-    """One failed item from an Elasticsearch bulk response."""
+    """One failed item from an Elasticsearch bulk response"""
 
     document_id: str
     status: int | None
@@ -48,7 +48,7 @@ class BulkFailure:
 
 
 class BulkIndexError(SearchIndexError):
-    """At least one item in a bulk indexing request failed."""
+    """At least one item in a bulk indexing request failed"""
 
     def __init__(self, failures: Collection[BulkFailure]) -> None:
         self.failures = tuple(failures)
@@ -60,7 +60,7 @@ class BulkIndexError(SearchIndexError):
 
 
 class DocumentSearchIndex:
-    """Index, search, and delete the searchable subset of documents."""
+    """Index, search, and delete the searchable subset of documents"""
 
     def __init__(
         self,
@@ -73,7 +73,7 @@ class DocumentSearchIndex:
         self.result_limit = result_limit
 
     async def ensure_exists(self) -> None:
-        """Create the index if needed and reject incompatible mappings."""
+        """Create the index if needed and reject incompatible mappings"""
         exists = bool(await self._client.indices.exists(index=self.index_name))
         if not exists:
             try:
@@ -88,7 +88,7 @@ class DocumentSearchIndex:
         await self._validate_mapping()
 
     async def upsert_many(self, documents: Collection[SearchDocument]) -> None:
-        """Index a batch by UUID without refreshing or hiding item failures."""
+        """Index a batch by UUID without refreshing or hiding item failures"""
         unique_documents = {document.id: document for document in documents}
         if not unique_documents:
             return
@@ -117,7 +117,7 @@ class DocumentSearchIndex:
         raise BulkIndexError(failures)
 
     async def search_ids(self, query: str) -> list[UUID]:
-        """Return UUIDs in Elasticsearch relevance order up to the configured limit."""
+        """Return UUIDs in Elasticsearch relevance order up to the configured limit"""
         response = await self._client.search(
             index=self.index_name,
             query={
@@ -152,7 +152,7 @@ class DocumentSearchIndex:
         return document_ids
 
     async def delete(self, document_id: UUID) -> bool:
-        """Delete by UUID and report whether the indexed document existed."""
+        """Delete by UUID and report whether the indexed document existed"""
         try:
             response = await self._client.delete(
                 index=self.index_name,
@@ -174,7 +174,7 @@ class DocumentSearchIndex:
         )
 
     async def refresh(self) -> None:
-        """Make all completed indexing operations visible to search."""
+        """Make all completed indexing operations visible to search"""
         await self._client.indices.refresh(index=self.index_name)
 
     async def _validate_mapping(self) -> None:
@@ -205,7 +205,7 @@ class DocumentSearchIndex:
 
 
 def get_document_search_index(request: Request) -> DocumentSearchIndex:
-    """Return the search index owned by the current application."""
+    """Return the search index owned by the current application"""
     return cast(DocumentSearchIndex, request.app.state.document_search_index)
 
 

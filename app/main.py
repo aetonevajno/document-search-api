@@ -1,4 +1,4 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point"""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -14,7 +14,7 @@ from app.search.index import DocumentSearchIndex
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
-    """Create an application instance without external-service side effects."""
+    """Create an application instance without external-service side effects"""
     app_settings = settings or get_settings()
     database = Database(app_settings.database_url)
     elasticsearch = ElasticsearchConnection(

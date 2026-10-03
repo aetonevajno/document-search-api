@@ -1,4 +1,4 @@
-"""Service liveness endpoint."""
+"""Service liveness endpoint"""
 
 from typing import Literal
 
@@ -9,7 +9,7 @@ router = APIRouter(tags=["health"])
 
 
 class HealthResponse(BaseModel):
-    """Response returned when the API process is alive."""
+    """Response returned when the API process is alive"""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -23,5 +23,5 @@ class HealthResponse(BaseModel):
     summary="Check API liveness",
 )
 async def health_check() -> HealthResponse:
-    """Report API process liveness without checking external dependencies."""
+    """Report API process liveness without checking external dependencies"""
     return HealthResponse()

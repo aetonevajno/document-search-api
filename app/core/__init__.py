@@ -1,1 +1,1 @@
-"""Application configuration and shared infrastructure."""
+"""Application configuration and shared infrastructure"""

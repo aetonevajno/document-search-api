@@ -1,4 +1,4 @@
-"""Create the documents table.
+"""Create the documents table
 
 Revision ID: 20261003_0001
 Revises:
@@ -18,7 +18,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Create PostgreSQL storage for complete documents."""
+    """Create PostgreSQL storage for complete documents"""
     op.create_table(
         "documents",
         sa.Column(
@@ -49,5 +49,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop PostgreSQL document storage."""
+    """Drop PostgreSQL document storage"""
     op.drop_table("documents")

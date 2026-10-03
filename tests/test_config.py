@@ -1,4 +1,4 @@
-"""Tests for environment-driven settings."""
+"""Tests for environment-driven settings"""
 
 import pytest
 
@@ -6,7 +6,7 @@ from app.core.config import Settings
 
 
 def test_dependency_settings_can_be_overridden(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Container service addresses are loaded from environment variables."""
+    """Container service addresses are loaded from environment variables"""
     monkeypatch.setenv(
         "APP_DATABASE_URL",
         "postgresql+asyncpg://app:password@postgres:5432/app",
@@ -17,6 +17,7 @@ def test_dependency_settings_can_be_overridden(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv("APP_ELASTICSEARCH_MAX_RETRIES", "5")
     monkeypatch.setenv("APP_ELASTICSEARCH_RETRY_ON_TIMEOUT", "false")
     monkeypatch.setenv("APP_SEARCH_RESULT_LIMIT", "7")
+    monkeypatch.setenv("APP_IMPORT_BATCH_SIZE", "250")
 
     settings = Settings()
 
@@ -27,6 +28,7 @@ def test_dependency_settings_can_be_overridden(monkeypatch: pytest.MonkeyPatch) 
     assert settings.elasticsearch_max_retries == 5
     assert settings.elasticsearch_retry_on_timeout is False
     assert settings.search_result_limit == 7
+    assert settings.import_batch_size == 250
 
 
 @pytest.mark.parametrize("value", ["0", "-1", "21"])
@@ -34,7 +36,7 @@ def test_search_result_limit_must_match_contract(
     monkeypatch: pytest.MonkeyPatch,
     value: str,
 ) -> None:
-    """The configured limit must remain within the assignment contract."""
+    """The configured limit must remain within the assignment contract"""
     monkeypatch.setenv("APP_SEARCH_RESULT_LIMIT", value)
 
     with pytest.raises(ValueError):
@@ -46,6 +48,8 @@ def test_search_result_limit_must_match_contract(
     [
         ("APP_ELASTICSEARCH_REQUEST_TIMEOUT_SECONDS", "0"),
         ("APP_ELASTICSEARCH_MAX_RETRIES", "-1"),
+        ("APP_IMPORT_BATCH_SIZE", "0"),
+        ("APP_IMPORT_BATCH_SIZE", "5001"),
     ],
 )
 def test_elasticsearch_transport_settings_are_validated(
@@ -53,7 +57,7 @@ def test_elasticsearch_transport_settings_are_validated(
     name: str,
     value: str,
 ) -> None:
-    """Invalid retry and timeout values fail before a client is created."""
+    """Invalid operational values fail before external clients are created"""
     monkeypatch.setenv(name, value)
 
     with pytest.raises(ValueError):

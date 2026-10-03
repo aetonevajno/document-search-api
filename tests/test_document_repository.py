@@ -1,4 +1,4 @@
-"""Unit tests for the document repository transaction contract."""
+"""Unit tests for the document repository transaction contract"""
 
 from datetime import datetime
 from typing import cast
@@ -13,7 +13,7 @@ from app.db.repositories import DocumentRepository
 
 
 def make_document() -> Document:
-    """Build a document without touching a database."""
+    """Build a document without touching a database"""
     return Document(
         id=uuid4(),
         rubrics=["VK-1", "VK-2"],
@@ -23,14 +23,14 @@ def make_document() -> Document:
 
 
 def make_session_mock() -> tuple[AsyncSession, AsyncMock]:
-    """Build a typed AsyncSession mock."""
+    """Build a typed AsyncSession mock"""
     session_mock = AsyncMock(spec=AsyncSession)
     return cast(AsyncSession, session_mock), session_mock
 
 
 @pytest.mark.asyncio
 async def test_add_flushes_without_committing() -> None:
-    """Repository writes remain inside the caller-owned transaction."""
+    """Repository writes remain inside the caller-owned transaction"""
     session, session_mock = make_session_mock()
     document = make_document()
 
@@ -45,7 +45,7 @@ async def test_add_flushes_without_committing() -> None:
 
 @pytest.mark.asyncio
 async def test_get_many_returns_scalar_documents() -> None:
-    """Repository converts SQLAlchemy scalar results to a plain list."""
+    """Repository converts SQLAlchemy scalar results to a plain list"""
     session, session_mock = make_session_mock()
     document = make_document()
     scalar_result = MagicMock()
@@ -60,7 +60,7 @@ async def test_get_many_returns_scalar_documents() -> None:
 
 @pytest.mark.asyncio
 async def test_get_many_short_circuits_for_empty_ids() -> None:
-    """An empty ID collection does not execute a database query."""
+    """An empty ID collection does not execute a database query"""
     session, session_mock = make_session_mock()
 
     result = await DocumentRepository(session).get_many([])
@@ -71,7 +71,7 @@ async def test_get_many_short_circuits_for_empty_ids() -> None:
 
 @pytest.mark.asyncio
 async def test_upsert_many_short_circuits_for_empty_documents() -> None:
-    """An empty batch does not execute a database statement."""
+    """An empty batch does not execute a database statement"""
     session, session_mock = make_session_mock()
 
     await DocumentRepository(session).upsert_many([])
@@ -82,7 +82,7 @@ async def test_upsert_many_short_circuits_for_empty_documents() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_reports_missing_document() -> None:
-    """Deleting an unknown ID is a no-op inside the transaction."""
+    """Deleting an unknown ID is a no-op inside the transaction"""
     session, session_mock = make_session_mock()
     session_mock.get.return_value = None
 
@@ -95,7 +95,7 @@ async def test_delete_reports_missing_document() -> None:
 
 @pytest.mark.asyncio
 async def test_delete_flushes_existing_document_without_committing() -> None:
-    """Deleting an existing row is flushed but never committed by the repository."""
+    """Deleting an existing row is flushed but never committed by the repository"""
     session, session_mock = make_session_mock()
     document = make_document()
     session_mock.get.return_value = document
