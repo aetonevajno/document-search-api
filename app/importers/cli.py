@@ -4,8 +4,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from elastic_transport import TransportError
-from elasticsearch import ApiError
+from elasticsearch import ApiError, TransportError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import Settings, get_settings

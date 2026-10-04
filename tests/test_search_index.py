@@ -129,6 +129,23 @@ async def test_ensure_exists_rejects_extra_mapped_fields() -> None:
 
 
 @pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {TEST_INDEX: None},
+        {TEST_INDEX: {"mappings": None}},
+    ],
+)
+async def test_ensure_exists_rejects_malformed_mapping_response(body: object) -> None:
+    client, _, indices = make_client()
+    indices.exists.return_value = True
+    indices.get_mapping.return_value = response(body)
+
+    with pytest.raises(SearchIndexError, match="invalid Elasticsearch mapping response"):
+        await make_index(client).ensure_exists()
+
+
+@pytest.mark.parametrize(
     "mapping_override",
     [
         {"index": False},
@@ -212,6 +229,26 @@ async def test_upsert_many_exposes_partial_bulk_failures() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"errors": False},
+        {"errors": True, "items": [{}]},
+        {
+            "errors": True,
+            "items": [{"index": {"_id": "document-id", "status": 400, "error": {}}}],
+        },
+    ],
+)
+async def test_upsert_many_rejects_malformed_bulk_response(body: object) -> None:
+    client, client_mock, _ = make_client()
+    client_mock.bulk.return_value = response(body)
+
+    with pytest.raises(SearchIndexError, match="invalid Elasticsearch bulk response"):
+        await make_index(client).upsert_many([SearchDocument(uuid4(), "text")])
+
+
 async def test_search_ids_preserves_relevance_order_and_query_contract() -> None:
     client, client_mock, _ = make_client()
     first_id = uuid4()
@@ -250,6 +287,22 @@ async def test_search_ids_rejects_non_uuid_hit() -> None:
     client_mock.search.return_value = response({"hits": {"hits": [{"_id": "not-a-uuid"}]}})
 
     with pytest.raises(SearchIndexError, match="invalid UUID"):
+        await make_index(client).search_ids("query")
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"hits": {}},
+        {"hits": {"hits": [{}]}},
+    ],
+)
+async def test_search_ids_rejects_malformed_search_response(body: object) -> None:
+    client, client_mock, _ = make_client()
+    client_mock.search.return_value = response(body)
+
+    with pytest.raises(SearchIndexError, match="invalid Elasticsearch search response"):
         await make_index(client).search_ids("query")
 
 

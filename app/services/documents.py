@@ -1,8 +1,7 @@
 import logging
 from uuid import UUID
 
-from elastic_transport import TransportError
-from elasticsearch import ApiError
+from elasticsearch import ApiError, TransportError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 

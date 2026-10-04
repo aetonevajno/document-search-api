@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from elastic_transport import TransportError
+from elasticsearch import TransportError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import Settings

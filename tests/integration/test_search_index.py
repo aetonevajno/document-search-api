@@ -53,7 +53,7 @@ async def test_index_is_idempotent_and_rejects_unknown_fields(
     await search_index.ensure_exists()
 
     with pytest.raises(BadRequestError):
-        await search_index._client.index(  # noqa: SLF001 - verifies the real mapping boundary
+        await search_index._client.index(
             index=search_index.index_name,
             id=str(uuid4()),
             document={"id": str(uuid4()), "text": "text", "unexpected": "value"},

@@ -48,7 +48,7 @@ def test_search_result_limit_must_match_contract(
         ("APP_IMPORT_BATCH_SIZE", "5001"),
     ],
 )
-def test_elasticsearch_transport_settings_are_validated(
+def test_numeric_settings_are_validated(
     monkeypatch: pytest.MonkeyPatch,
     name: str,
     value: str,
