@@ -33,7 +33,7 @@ class DocumentService:
             if not document_ids:
                 return []
             documents = await self._repository.get_many(document_ids)
-        except (ApiError, TransportError, SearchIndexError, SQLAlchemyError) as error:
+        except (ApiError, TransportError, SearchIndexError, SQLAlchemyError, OSError) as error:
             raise DocumentStorageUnavailableError("document storage is unavailable") from error
 
         stored_ids = {document.id for document in documents}
@@ -51,7 +51,7 @@ class DocumentService:
             async with self._session.begin():
                 database_deleted = await self._repository.delete(document_id)
             index_deleted = await self._search_index.delete(document_id)
-        except (ApiError, TransportError, SearchIndexError, SQLAlchemyError) as error:
+        except (ApiError, TransportError, SearchIndexError, SQLAlchemyError, OSError) as error:
             raise DocumentStorageUnavailableError("document storage is unavailable") from error
 
         return database_deleted or index_deleted

@@ -113,6 +113,15 @@ async def test_search_maps_expected_backend_failures(backend: str) -> None:
         await DocumentService(session, index).search("query")
 
 
+async def test_search_maps_low_level_database_connection_failure() -> None:
+    session, session_mock, index, index_mock = make_dependencies()
+    index_mock.search_ids.return_value = [uuid4()]
+    session_mock.scalars.side_effect = ConnectionRefusedError("database unavailable")
+
+    with pytest.raises(DocumentStorageUnavailableError):
+        await DocumentService(session, index).search("query")
+
+
 @pytest.mark.parametrize(
     ("database_exists", "index_exists", "expected"),
     [
@@ -167,10 +176,17 @@ async def test_delete_commits_database_before_deleting_from_index() -> None:
     assert events == ["database_commit", "index_delete"]
 
 
-async def test_delete_database_failure_skips_index() -> None:
+@pytest.mark.parametrize(
+    "database_error",
+    [
+        SQLAlchemyError("database unavailable"),
+        ConnectionRefusedError("database unavailable"),
+    ],
+)
+async def test_delete_database_failure_skips_index(database_error: BaseException) -> None:
     session, session_mock, index, index_mock = make_dependencies()
     configure_transaction(session_mock)
-    session_mock.get.side_effect = SQLAlchemyError("database unavailable")
+    session_mock.get.side_effect = database_error
 
     with pytest.raises(DocumentStorageUnavailableError):
         await DocumentService(session, index).delete(uuid4())
