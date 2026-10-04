@@ -16,6 +16,9 @@
 ```bash
 cp .env.example .env
 docker compose up --build --wait
+docker compose run --rm \
+  --volume "$PWD/examples/posts.csv:/data/posts.csv:ro" \
+  api import-documents /data/posts.csv
 ```
 
 После запуска доступны:
@@ -50,10 +53,14 @@ python -m app.importers ./posts.csv
 Запуск через Docker:
 
 ```bash
+CSV_PATH="$PWD/posts.csv"
+test -f "$CSV_PATH" || { echo "CSV file not found: $CSV_PATH" >&2; exit 1; }
 docker compose run --rm \
-  --volume "$PWD/posts.csv:/data/posts.csv:ro" \
+  --volume "$CSV_PATH:/data/posts.csv:ro" \
   api import-documents /data/posts.csv
 ```
+
+В `examples/posts.csv` включён исходный файл из тестового задания.
 
 ID документа — детерминированный UUIDv5 от текста, даты и рубрик. Поэтому
 повторный импорт того же файла не создаёт дубликаты. Данные пишутся пакетами:
@@ -64,7 +71,7 @@ ID документа — детерминированный UUIDv5 от тек�
 ограничивает нагрузку на PostgreSQL и Elasticsearch, но не потребление памяти
 при разборе файла.
 
-Исходный файл из задания: [posts.csv](https://disk.yandex.ru/d/UYooXd9q2yqTMQ).
+Источник: [posts.csv](https://disk.yandex.ru/d/UYooXd9q2yqTMQ).
 
 ## API
 
@@ -81,7 +88,7 @@ Elasticsearch выбирает до 20 совпадений по полю `text`
 
 ```bash
 curl --get \
-  --data-urlencode 'q=космическая программа' \
+  --data-urlencode 'q=новый скин' \
   http://127.0.0.1:8000/documents/search
 ```
 

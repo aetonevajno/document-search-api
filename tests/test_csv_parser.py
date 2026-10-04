@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime
 from io import StringIO
+from pathlib import Path
 from uuid import UUID
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from app.importers.csv_parser import (
     CsvImportError,
     make_document_id,
+    parse_document_csv,
     parse_document_csv_stream,
 )
 
@@ -24,6 +26,15 @@ def make_csv(
     writer.writerows(rows)
     value = stream.getvalue()
     return StringIO(("\ufeff" if bom else "") + value, newline="")
+
+
+def test_bundled_assignment_csv_is_valid() -> None:
+    path = Path(__file__).resolve().parents[1] / "examples" / "posts.csv"
+
+    plan = parse_document_csv(path)
+
+    assert plan.rows_read == 1500
+    assert len(plan.documents) == 1500
 
 
 def test_parser_preserves_unicode_multiline_text_and_bom() -> None:
